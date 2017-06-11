@@ -1,0 +1,10 @@
+{
+  "name": "particle-farm-monitor",
+  "scripts": {
+    "build": "particle compile electron",
+    "prebuild": "del-cli *.bin"
+  },
+  "devDependencies": {
+    "del-cli": "^1.0.0"
+  }
+}
