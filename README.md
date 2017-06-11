@@ -1,6 +1,26 @@
 # particle-farm-monitor
 
-A Particle project named particle-farm-monitor
+A Particle project to monitor my farm
+
+## To use
+
+Run `npm update`:
+
+```
+> npm update
+```
+
+Compile with `npm run build`:
+
+```
+> npm run build
+```
+
+This places a binary (.bin) file in the root of the project. Flash this to the Electron via USB.
+
+```
+> particle flash -usb {filename}.bin
+```
 
 ## Welcome to your project!
 
