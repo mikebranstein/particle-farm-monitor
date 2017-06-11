@@ -2,6 +2,14 @@
 
 A Particle project to monitor my farm
 
+## Pre-requisites
+
+Install the Particle.io CLI:
+
+```
+> npm install -g particle-cli
+```
+
 ## To use
 
 Run `npm update`:
