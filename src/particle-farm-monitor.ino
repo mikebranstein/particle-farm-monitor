@@ -11,9 +11,9 @@ int led = D7;
 void setup() {
   // Put initialization like pinMode and begin functions here.
 
-  Cellular.off();
-
   pinMode(led, OUTPUT);
+
+  Particle.publish("w", "{\"test\":\"testValue\"}", PRIVATE);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
