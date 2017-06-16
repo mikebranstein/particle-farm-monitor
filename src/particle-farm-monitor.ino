@@ -7,9 +7,6 @@ void setup() {
 
   // initialize the weather service, true = debug, false = production
   weatherService.init(false);
-
-  // Put initialization like pinMode and begin functions here.
-  pinMode(led, OUTPUT);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
