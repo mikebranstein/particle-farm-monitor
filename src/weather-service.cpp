@@ -62,12 +62,17 @@ char* WeatherService::getWeatherData() {
     //If in altitude mode, you can get a reading in feet with this line:
     //altf = _sensor.readAltitudeFt();
 
+    // get fuel guage and bundle with temperature data
+    FuelGauge fuel;
+
     StaticJsonBuffer<200> jsonBuffer;
 
     JsonObject& root = jsonBuffer.createObject();
     root["h"] = humidity;
     root["t"] = tempf;
     root["p"] = mmHg;
+    root["v"] = fuel.getVCell(); // voltage
+    root["c"] = fuel.getSoC(); // state of charge in %
 
     static char buffer[100];
     root.printTo(buffer, sizeof(buffer));
