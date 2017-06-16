@@ -1,30 +1,22 @@
-/*
- * Project particle-farm-monitor
- * Description:
- * Author:
- * Date:
- */
+#include "weather-service.h"
 
-int led = D7;
+WeatherService weatherService;
 
 // setup() runs once, when the device is first turned on.
 void setup() {
+
+  // initialize the weather service, true = debug, false = production
+  weatherService.init(false);
+
   // Put initialization like pinMode and begin functions here.
-
   pinMode(led, OUTPUT);
-
-  Particle.publish("w", "{\"test\":\"testValue\"}", PRIVATE);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
-  // The core of your code will likely live here.
-  digitalWrite(led, HIGH);
+  char* json = weatherService.getWeatherData();
+  Particle.publish("w", json, PRIVATE);
 
-  delay(500);
-
-  digitalWrite(led, LOW);
-
-  delay(500);
-
+  int minutesToDeepSleep = 1;
+  System.sleep(SLEEP_MODE_DEEP, minutesToDeepSleep * 60);
 }
