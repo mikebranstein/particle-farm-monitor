@@ -27,7 +27,7 @@ Compile with `npm run build`:
 This places a binary (.bin) file in the root of the project. Flash this to the Electron via USB.
 
 ```
-> particle flash -usb {filename}.bin
+> particle flash --usb {filename}.bin
 ```
 
 ## Welcome to your project!
