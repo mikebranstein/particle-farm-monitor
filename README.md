@@ -1,6 +1,8 @@
 # particle-farm-monitor
 
-A Particle project to monitor my farm
+A Particle project to monitor my farm. Components used:
+- DS18B20 (https://www.sparkfun.com/products/11050?_ga=2.245278917.1908945936.1500347143-1779639555.1497142554)
+
 
 ## Pre-requisites
 

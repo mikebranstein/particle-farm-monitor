@@ -7,7 +7,7 @@ WeatherService weatherService;
 void setup() {
 
   // initialize the weather service, true = debug, false = production
-  weatherService.init(true);
+  weatherService.init(false);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
