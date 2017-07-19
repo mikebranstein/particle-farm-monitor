@@ -2,6 +2,7 @@
   "name": "particle-farm-monitor",
   "scripts": {
     "build": "particle compile electron",
+    "monitor": "sudo cu -s 9600 -l /dev/tty.usbmodem1411",
     "prebuild": "del-cli *.bin"
   },
   "devDependencies": {

@@ -24,10 +24,26 @@ Compile with `npm run build`:
 > npm run build
 ```
 
-This places a binary (.bin) file in the root of the project. Flash this to the Electron via USB.
+This places a binary (.bin) file in the root of the project. Flash this to the Electron via USB. Before you flash, place the photon/electron in upload mode by holding the *Mode* button down while *Reset* is pressed. Release the *Mode* button when the particle D7 LED flashes yellow.
 
 ```
 > particle flash --usb {filename}.bin
+```
+
+## To debug
+
+Initialize the weather service with a *true* value to place it in debug mode. Debug mode will pause for serial port input before running code. 
+
+Interact with the particle over serial:
+
+```
+> sudo cu -s 9600 -l /dev/tty.usbmodem1411
+```
+ 
+or
+
+```
+> npm run monitor
 ```
 
 ## Welcome to your project!
