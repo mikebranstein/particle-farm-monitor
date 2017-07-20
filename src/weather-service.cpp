@@ -43,6 +43,28 @@ void WeatherService::init(bool debugMode) {
     //the time between data samples.
 
     _sensor.enableEventFlags(); //Necessary register calls to enble temp, baro and alt
+
+    // initialize soil moisture sensor
+    //
+    // Leaving the soil moisture sensor powered all the time leads to corrosion 
+    // of the probes. To account for this, this port breaks out Digital Pin D5 
+    // as the power pin for the sensor, allowing the Photon to power the sensor, 
+    // take a reading, and then disable power, giving the probes a longer lifespan. 
+    // The moisture level can be read on Analog Pin A1.
+    //
+    // D5 is the power pin
+    // A1 is the signal pin
+    _soilMoistureSignalPin = A1;
+    _soilMoisturePowerPin = D5;
+
+    // set the soil moisture range reading levels, this should be calibrated based 
+    // on the type of soil. These values re converted to a percentage of 0-100%.
+    // The range values also depend on the voltage applied by the photon
+    _soilMoistureRangeLow = 0; // no water
+    _soilMoistureRangeHigh = 3350; // pure water
+
+    pinMode(_soilMoisturePowerPin, OUTPUT);
+    digitalWrite(_soilMoisturePowerPin, LOW);
 }
 
 char* WeatherService::getWeatherData() {
@@ -74,6 +96,7 @@ char* WeatherService::getWeatherData() {
     root["t"] = tempf;
     root["p"] = mmHg;
     root["st"] = getSoilTemp(); // soil temp in degF
+    root["m"] = getSoilMoisture(); // soil moisture level
     root["v"] = fuel.getVCell(); // voltage
     root["c"] = fuel.getSoC(); // state of charge in %
 
@@ -260,9 +283,38 @@ void WeatherService::serialPrintln() {
     serialPrintln("");
 }
 
-
 void WeatherService::serialWrite(char c) {
     if (_debugMode) {
         Serial.write(c);
     }
+}
+
+int WeatherService::getSoilMoisture()
+{
+    int soilMoistureRaw;
+    int soilMoistureAdjusted;
+
+    digitalWrite(_soilMoisturePowerPin, HIGH); // power soil moisture probe
+    delay(10); // wait 10 milliseconds 
+
+    soilMoistureRaw = analogRead(_soilMoistureSignalPin); // Read the SIG value form sensor 
+    
+    digitalWrite(_soilMoisturePowerPin, LOW); //turn "Off" soil moisture probe
+    
+    serialPrint("Soil Moisture (Raw): ");    
+    serialPrint((long)soilMoistureRaw);
+    serialPrintln();
+
+    soilMoistureAdjusted = map(soilMoistureRaw, _soilMoistureRangeLow, _soilMoistureRangeHigh, 0, 100);
+
+    serialPrint("Soil Moisture (Adjusted): ");    
+    serialPrint((long)soilMoistureAdjusted);
+    serialPrintln();
+
+    // cap soil moisture to 100
+    if (soilMoistureAdjusted > 100) {
+        soilMoistureAdjusted = 100;
+    }
+
+    return soilMoistureAdjusted;
 }

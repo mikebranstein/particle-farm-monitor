@@ -1,8 +1,8 @@
 # particle-farm-monitor
 
 A Particle project to monitor my farm. Components used:
-- DS18B20 (https://www.sparkfun.com/products/11050?_ga=2.245278917.1908945936.1500347143-1779639555.1497142554)
-
+- Temperature probe: DS18B20 (https://www.sparkfun.com/products/11050?_ga=2.245278917.1908945936.1500347143-1779639555.1497142554)
+- Soil moisture probe: (https://www.sparkfun.com/products/13322?_ga=2.185709932.413155604.1500572398-1779639555.1497142554_)
 
 ## Pre-requisites
 

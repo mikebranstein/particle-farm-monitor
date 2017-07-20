@@ -15,6 +15,10 @@ class WeatherService {
     private:
         Weather _sensor;
         bool _debugMode;
+        int _soilMoistureSignalPin;
+        int _soilMoisturePowerPin;
+        int _soilMoistureRangeLow;
+        int _soilMoistureRangeHigh;
         float getSoilTemp();
         void serialPrint(char s[]);
         void serialPrint(long value);
@@ -22,6 +26,7 @@ class WeatherService {
         void serialWrite(char c);
         void serialPrintln(char s[]);
         void serialPrintln();
+        int getSoilMoisture();
 };
 
 #endif
