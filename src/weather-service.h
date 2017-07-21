@@ -15,10 +15,24 @@ class WeatherService {
     private:
         Weather _sensor;
         bool _debugMode;
+        
         int _soilMoistureSignalPin;
         int _soilMoisturePowerPin;
         int _soilMoistureRangeLow;
         int _soilMoistureRangeHigh;
+        
+        int _anemometerSignalPin;
+        float _anemometerScaleMPH;
+        unsigned int _lastAnemoneterEvent;
+        volatile unsigned int _gustPeriod;
+        volatile unsigned int _anemoneterPeriodTotal;
+        volatile unsigned int _anemoneterPeriodReadingCount;
+
+        int _windVaneSignalPin;
+        float _windVaneCosTotal;
+        float _windVaneSinTotal;
+        unsigned int _windVaneReadingCount;
+
         float getSoilTemp();
         void serialPrint(char s[]);
         void serialPrint(long value);
@@ -27,6 +41,12 @@ class WeatherService {
         void serialPrintln(char s[]);
         void serialPrintln();
         int getSoilMoisture();
+        void handleAnemometerEvent();
+        float getAnemometerMPH(float * gustMPH);
+
+        void captureWindVane();
+        float lookupRadiansFromRaw(unsigned int analogRaw);
+        float getWindVaneDegrees();
 };
 
 #endif

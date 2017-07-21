@@ -5,6 +5,9 @@
 
 #include "OneWire.h"
 
+#include <math.h>
+
+
 // ctor()
 WeatherService::WeatherService(){}
 
@@ -65,6 +68,28 @@ void WeatherService::init(bool debugMode) {
 
     pinMode(_soilMoisturePowerPin, OUTPUT);
     digitalWrite(_soilMoisturePowerPin, LOW);
+
+    // wind speed anemometer
+    // The Anemometer generates a frequency relative to the windspeed.  1Hz: 1.492MPH, 2Hz: 2.984MPH, etc.
+    //        
+    // measure the average period (elaspsed time between pulses), and calculate the average windspeed since the last recording.
+    _anemometerSignalPin = D3;
+    _anemometerScaleMPH = 1.492; // Windspeed if we got a pulse every second (i.e. 1Hz)
+    _lastAnemoneterEvent = 0;
+    _gustPeriod = UINT_MAX;
+    _anemoneterPeriodTotal = 0;
+    _anemoneterPeriodReadingCount = 0;
+    
+    pinMode(_anemometerSignalPin, INPUT_PULLUP);
+    attachInterrupt(_anemometerSignalPin, &WeatherService::handleAnemometerEvent, this, FALLING);
+
+    // wind vane
+    // For the wind vane, we need to average the unit vector components (the sine 
+    // and cosine of the angle)
+    _windVaneSignalPin = A0;
+    _windVaneCosTotal = 0.0;
+    _windVaneSinTotal = 0.0;
+    _windVaneReadingCount = 0;
 }
 
 char* WeatherService::getWeatherData() {
@@ -89,6 +114,10 @@ char* WeatherService::getWeatherData() {
     // get fuel guage and bundle with temperature data
     FuelGauge fuel;
 
+    // get the avg wind speed and gust speed
+    float gustMPH;
+    float windMPH = getAnemometerMPH(&gustMPH);
+
     StaticJsonBuffer<200> jsonBuffer;
 
     JsonObject& root = jsonBuffer.createObject();
@@ -97,6 +126,8 @@ char* WeatherService::getWeatherData() {
     root["p"] = mmHg;
     root["st"] = getSoilTemp(); // soil temp in degF
     root["m"] = getSoilMoisture(); // soil moisture level
+    root["a"] = windMPH; // anemometer MPH
+    root["d"] = getWindVaneDegrees(); // wind vane degrees
     root["v"] = fuel.getVCell(); // voltage
     root["c"] = fuel.getSoC(); // state of charge in %
 
@@ -317,4 +348,117 @@ int WeatherService::getSoilMoisture()
     }
 
     return soilMoistureAdjusted;
+}
+
+void WeatherService::handleAnemometerEvent() {
+    // Activated by the magnet in the anemometer (2 ticks per rotation), attached to input D3
+    unsigned int timeAnemometerEvent = millis(); // grab current time
+     
+    //If there's never been an event before (first time through), then just capture it
+    if(_lastAnemoneterEvent != 0) {
+        // Calculate time since last event
+        unsigned int period = timeAnemometerEvent - _lastAnemoneterEvent;
+        // ignore switch-bounce glitches less than 10mS after initial edge (which implies a max windspeed of 149mph)
+        if(period < 10) {
+          return;
+        }
+        if(period < _gustPeriod) {
+            // If the period is the shortest (and therefore fastest windspeed) seen, capture it
+            _gustPeriod = period;
+        }
+        _anemoneterPeriodTotal += period;
+        _anemoneterPeriodReadingCount++;
+    }
+    
+    _lastAnemoneterEvent = timeAnemometerEvent; // set up for next event
+}
+
+float WeatherService::getAnemometerMPH(float * gustMPH)
+{
+    if(_anemoneterPeriodReadingCount == 0)
+    {
+        *gustMPH = 0.0;
+        return 0;
+    }
+
+    // Nonintuitive math:  We've collected the sum of the observed periods between pulses, and the number of observations.
+    // Now, we calculate the average period (sum / number of readings), take the inverse and muliple by 1000 to give frequency, and then mulitply by our scale to get MPH.
+    // The math below is transformed to maximize accuracy by doing all muliplications BEFORE dividing.
+    float result = _anemometerScaleMPH * 1000.0 * float(_anemoneterPeriodReadingCount) / float(_anemoneterPeriodTotal);
+    _anemoneterPeriodTotal = 0;
+    _anemoneterPeriodReadingCount = 0;
+    *gustMPH = _anemometerScaleMPH  * 1000.0 / float(_gustPeriod);
+    _gustPeriod = UINT_MAX;
+
+    serialPrint("Anemometer MPH: ");
+    serialPrint(result);
+    serialPrintln();
+
+    return result;
+}
+
+void WeatherService::captureWindVane() {
+    // Read the wind vane, and update the running average of the two components of the vector
+    unsigned int windVaneRaw = analogRead(_windVaneSignalPin);
+    
+    float windVaneRadians = lookupRadiansFromRaw(windVaneRaw);
+    if(windVaneRadians > 0 && windVaneRadians < 6.14159)
+    {
+        _windVaneCosTotal += cos(windVaneRadians);
+        _windVaneSinTotal += sin(windVaneRadians);
+        _windVaneReadingCount++;
+    }
+    return;
+}
+
+float WeatherService::getWindVaneDegrees()
+{
+    // capturing wind vane direciton 10 times over 2 seconds to get a good average
+    for (int i = 0; i < 10; i++) {
+        captureWindVane();
+        delay(200);        
+    }
+
+    if(_windVaneReadingCount == 0) {
+        return 0;
+    }
+    float avgCos = _windVaneCosTotal/float(_windVaneReadingCount);
+    float avgSin = _windVaneSinTotal/float(_windVaneReadingCount);
+    float result = atan(avgSin/avgCos) * 180.0 / 3.14159;
+    _windVaneCosTotal = 0.0;
+    _windVaneSinTotal = 0.0;
+    _windVaneReadingCount = 0;
+    // atan can only tell where the angle is within 180 degrees.  Need to look at cos to tell which half of circle we're in
+    if(avgCos < 0) result += 180.0;
+    // atan will return negative angles in the NW quadrant -- push those into positive space.
+    if(result < 0) result += 360.0;
+    
+    serialPrint("Wind Vane Degrees: ");
+    serialPrint(result, 2);
+    serialPrintln();
+
+   return result;
+}
+
+float WeatherService::lookupRadiansFromRaw(unsigned int analogRaw)
+{
+    // The mechanism for reading the weathervane isn't arbitrary, but effectively, we just need to look up which of the 16 positions we're in.
+    if(analogRaw >= 2200 && analogRaw < 2400) return (3.14);//South
+    if(analogRaw >= 2100 && analogRaw < 2200) return (3.53);//SSW
+    if(analogRaw >= 3200 && analogRaw < 3299) return (3.93);//SW
+    if(analogRaw >= 3100 && analogRaw < 3200) return (4.32);//WSW
+    if(analogRaw >= 3890 && analogRaw < 3999) return (4.71);//West
+    if(analogRaw >= 3700 && analogRaw < 3780) return (5.11);//WNW
+    if(analogRaw >= 3780 && analogRaw < 3890) return (5.50);//NW
+    if(analogRaw >= 3400 && analogRaw < 3500) return (5.89);//NNW
+    if(analogRaw >= 3570 && analogRaw < 3700) return (0.00);//North
+    if(analogRaw >= 2600 && analogRaw < 2700) return (0.39);//NNE
+    if(analogRaw >= 2750 && analogRaw < 2850) return (0.79);//NE
+    if(analogRaw >= 1510 && analogRaw < 1580) return (1.18);//ENE
+    if(analogRaw >= 1580 && analogRaw < 1650) return (1.57);//East
+    if(analogRaw >= 1470 && analogRaw < 1510) return (1.96);//ESE
+    if(analogRaw >= 1900 && analogRaw < 2000) return (2.36);//SE
+    if(analogRaw >= 1700 && analogRaw < 1750) return (2.74);//SSE
+    if(analogRaw > 4000) return(-1); // Open circuit?  Probably means the sensor is not connected
+    return -1;
 }
