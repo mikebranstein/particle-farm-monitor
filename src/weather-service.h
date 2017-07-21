@@ -12,6 +12,7 @@ class WeatherService {
         
         void init(bool debugMode);
         char* getWeatherData();
+        int getRainGaugeSignalPin();
     private:
         Weather _sensor;
         bool _debugMode;
@@ -48,6 +49,12 @@ class WeatherService {
         void captureWindVane();
         float lookupRadiansFromRaw(unsigned int analogRaw);
         float getWindVaneDegrees();
+
+        int _rainGuageSignalPin;
+        void handleRainEvent();
+        volatile unsigned int _rainEventCount;
+        unsigned int _lastRainEvent;
+        float getAndResetRainInches();
 };
 
 #endif

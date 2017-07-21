@@ -90,6 +90,13 @@ void WeatherService::init(bool debugMode) {
     _windVaneCosTotal = 0.0;
     _windVaneSinTotal = 0.0;
     _windVaneReadingCount = 0;
+
+    // initialize the rain gauge
+    _rainGuageSignalPin = D2;
+    _rainEventCount = 0;
+    _lastRainEvent = 0;
+    pinMode(_rainGuageSignalPin, INPUT_PULLUP);
+    attachInterrupt(_rainGuageSignalPin, &WeatherService::handleRainEvent, this, FALLING);
 }
 
 char* WeatherService::getWeatherData() {
@@ -129,6 +136,7 @@ char* WeatherService::getWeatherData() {
     root["m"] = getSoilMoisture(); // soil moisture level
     root["a"] = windMPH; // anemometer MPH
     root["d"] = getWindVaneDegrees(); // wind vane degrees
+    root["r"] = getAndResetRainInches(); // rain gauge count
     root["v"] = fuel.getVCell(); // voltage
     root["c"] = fuel.getSoC(); // state of charge in %
 
@@ -475,4 +483,37 @@ float WeatherService::lookupRadiansFromRaw(unsigned int analogRaw)
     if(analogRaw >= 1700 && analogRaw < 1750) return (2.74);//SSE
     if(analogRaw > 4000) return(-1); // Open circuit?  Probably means the sensor is not connected
     return -1;
+}
+
+int WeatherService::getRainGaugeSignalPin() {
+    return _rainGuageSignalPin;
+}
+
+void WeatherService::handleRainEvent() {
+    // Count rain gauge bucket tips as they occur
+    // Activated by the magnet and reed switch in the rain gauge, attached to input D2
+    unsigned int timeRainEvent = millis(); // grab current time
+    
+    // ignore switch-bounce glitches less than 10mS after initial edge
+    if(timeRainEvent - _lastRainEvent < 10) {
+      return;
+    }
+    
+    _rainEventCount++; //Increase this minute's amount of rain
+    _lastRainEvent = timeRainEvent; // set up for next event
+}
+
+float WeatherService::getAndResetRainInches() {
+    const float RAIN_SCALE_IN_TENTHS_OF_INCHES = 0.11;
+    float result = RAIN_SCALE_IN_TENTHS_OF_INCHES * float(_rainEventCount);
+
+    serialPrint("Rain events: ");
+    serialPrint(_rainEventCount);
+    serialPrintln();
+    serialPrint("Rain (in tenths of inches): ");
+    serialPrint(result, 3);
+    serialPrintln();
+
+    _rainEventCount = 0;
+    return result;
 }

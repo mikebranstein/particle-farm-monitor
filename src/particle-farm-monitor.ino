@@ -15,5 +15,5 @@ void loop() {
   char* json = weatherService.getWeatherData();
   Particle.publish("w", json, PRIVATE);
 
-  System.sleep(SLEEP_MODE_DEEP, MINUTES_TO_SLEEP);
+  System.sleep(weatherService.getRainGaugeSignalPin(), FALLING, MINUTES_TO_SLEEP);
 }
