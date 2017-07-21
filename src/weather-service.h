@@ -41,6 +41,7 @@ class WeatherService {
         void serialPrintln(char s[]);
         void serialPrintln();
         int getSoilMoisture();
+        
         void handleAnemometerEvent();
         float getAnemometerMPH(float * gustMPH);
 

@@ -7,13 +7,15 @@ WeatherService weatherService;
 void setup() {
 
   // initialize the weather service, true = debug, false = production
-  weatherService.init(false);
+  weatherService.init(true);
 }
 
 // loop() runs over and over again, as quickly as it can execute.
 void loop() {
   char* json = weatherService.getWeatherData();
-  Particle.publish("w", json, PRIVATE);
+  Serial.println(json);
+  //Particle.publish("w", json, PRIVATE);
 
-  System.sleep(SLEEP_MODE_DEEP, MINUTES_TO_SLEEP);
+  delay(5000);
+  //System.sleep(SLEEP_MODE_DEEP, MINUTES_TO_SLEEP);
 }

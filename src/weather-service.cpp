@@ -93,6 +93,7 @@ void WeatherService::init(bool debugMode) {
 }
 
 char* WeatherService::getWeatherData() {
+    serialPrintln();
 
     // Measure Relative Humidity from the HTU21D or Si7021
     float humidity = _sensor.getRH();
@@ -118,7 +119,7 @@ char* WeatherService::getWeatherData() {
     float gustMPH;
     float windMPH = getAnemometerMPH(&gustMPH);
 
-    StaticJsonBuffer<200> jsonBuffer;
+    StaticJsonBuffer<400> jsonBuffer;
 
     JsonObject& root = jsonBuffer.createObject();
     root["h"] = humidity;
@@ -131,7 +132,7 @@ char* WeatherService::getWeatherData() {
     root["v"] = fuel.getVCell(); // voltage
     root["c"] = fuel.getSoC(); // state of charge in %
 
-    static char buffer[100];
+    static char buffer[400];
     root.printTo(buffer, sizeof(buffer));
     return buffer;
 }
@@ -278,9 +279,6 @@ float WeatherService::getSoilTemp() {
         serialPrint(fahrenheit);
         serialPrintln(" Fahrenheit");
     }
-
-    serialPrintln("No more addresses.");
-    serialPrintln();
     ds.reset_search();
 
     return fahrenheit;
@@ -375,23 +373,25 @@ void WeatherService::handleAnemometerEvent() {
 
 float WeatherService::getAnemometerMPH(float * gustMPH)
 {
+    float result;
     if(_anemoneterPeriodReadingCount == 0)
     {
         *gustMPH = 0.0;
-        return 0;
+        result = 0.0;
+    }
+    else {
+        // Nonintuitive math:  We've collected the sum of the observed periods between pulses, and the number of observations.
+        // Now, we calculate the average period (sum / number of readings), take the inverse and muliple by 1000 to give frequency, and then mulitply by our scale to get MPH.
+        // The math below is transformed to maximize accuracy by doing all muliplications BEFORE dividing.
+        result = _anemometerScaleMPH * 1000.0 * float(_anemoneterPeriodReadingCount) / float(_anemoneterPeriodTotal);
+        _anemoneterPeriodTotal = 0;
+        _anemoneterPeriodReadingCount = 0;
+        *gustMPH = _anemometerScaleMPH  * 1000.0 / float(_gustPeriod);
+        _gustPeriod = UINT_MAX;
     }
 
-    // Nonintuitive math:  We've collected the sum of the observed periods between pulses, and the number of observations.
-    // Now, we calculate the average period (sum / number of readings), take the inverse and muliple by 1000 to give frequency, and then mulitply by our scale to get MPH.
-    // The math below is transformed to maximize accuracy by doing all muliplications BEFORE dividing.
-    float result = _anemometerScaleMPH * 1000.0 * float(_anemoneterPeriodReadingCount) / float(_anemoneterPeriodTotal);
-    _anemoneterPeriodTotal = 0;
-    _anemoneterPeriodReadingCount = 0;
-    *gustMPH = _anemometerScaleMPH  * 1000.0 / float(_gustPeriod);
-    _gustPeriod = UINT_MAX;
-
     serialPrint("Anemometer MPH: ");
-    serialPrint(result);
+    serialPrint(result, 2);
     serialPrintln();
 
     return result;
@@ -414,9 +414,14 @@ void WeatherService::captureWindVane() {
 float WeatherService::getWindVaneDegrees()
 {
     // capturing wind vane direciton 10 times over 2 seconds to get a good average
-    for (int i = 0; i < 10; i++) {
-        captureWindVane();
-        delay(200);        
+    unsigned long t = 0;
+    int windMeasurementCount = 0;
+    while (windMeasurementCount < 10) {
+        if (millis() - t >= 200) {
+            captureWindVane();
+            windMeasurementCount++;
+            t = millis();
+        }    
     }
 
     if(_windVaneReadingCount == 0) {
