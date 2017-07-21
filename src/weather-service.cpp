@@ -373,6 +373,15 @@ void WeatherService::handleAnemometerEvent() {
 
 float WeatherService::getAnemometerMPH(float * gustMPH)
 {
+    // force a 5 second anemometer reading
+    bool timerElapsed = false;
+    unsigned long t = millis();
+    while (timerElapsed == false) {
+        if (millis() - t >= 5000) {
+            timerElapsed = true;
+        }    
+    }
+
     float result;
     if(_anemoneterPeriodReadingCount == 0)
     {
